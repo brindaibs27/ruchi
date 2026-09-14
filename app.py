@@ -136,8 +136,8 @@ st.markdown("---")
 # TABS
 # -------------------------
 
-tab1, tab2, tab3 = st.tabs(
-    ["🍳 Create Recipe", "🛒 Ingredient Cart", "📚 My Library"]
+tab1, tab2, tab3, tab4 = st.tabs(
+    ["🍳 Create Recipe", "🛒 Ingredient Cart", "📚 My Library", "💎 Ruchi Plus"]
 )
 
 
@@ -452,6 +452,65 @@ with tab3:
 
                 st.write(item.get("url"))
 
+# -------------------------
+# RUCHI PLUS / FREEMIUM
+# -------------------------
+
+with tab4:
+
+    st.header("💎 Ruchi Plus")
+    st.write(
+        "Start cooking with Ruchi for free. "
+        "Upgrade later for a more personalised cooking experience."
+    )
+
+    free_col, plus_col = st.columns(2)
+
+    with free_col:
+        st.subheader("🍲 Ruchi Free")
+        st.markdown("""
+        **₹0**
+
+        ✓ AI recipe generation  
+        ✓ Craving-based recipes  
+        ✓ Cook with ingredients you already have  
+        ✓ Dietary and allergy preferences  
+        ✓ Smart Ingredient Cart  
+        ✓ Save recipes and food inspiration
+        """)
+
+        st.success("Your current plan")
+
+    with plus_col:
+        st.subheader("✨ Ruchi Plus")
+        st.markdown("""
+        **Coming Soon**
+
+        Everything in Free, plus:
+
+        ✓ More recipe generations  
+        ✓ Advanced nutrition insights  
+        ✓ Deeper personalisation  
+        ✓ Expanded recipe history  
+        ✓ Advanced meal preferences  
+        ✓ Future premium Ruchi features
+        """)
+
+        st.button(
+            "🔔 Notify Me When Ruchi Plus Launches",
+            disabled=True,
+            use_container_width=True
+        )
+
+    st.info(
+        "Ruchi Plus is a proposed premium plan for the future. "
+        "Payments are not enabled in this MVP."
+    )
+
+
+# -------------------------
+# FOOTER
+# -------------------------
 
 st.markdown("---")
 
