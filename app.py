@@ -352,21 +352,10 @@ Do not include text outside the JSON.
 # BRAND HEADER
 # ============================================================
 
-st.markdown("""
-<div class="ruchi-header">
+logo_left, logo_center, logo_right = st.columns([1, 2, 1])
 
-    <div class="ruchi-symbol">◡</div>
-
-    <div class="ruchi-name">
-        Ruchi
-    </div>
-
-    <div class="ruchi-tagline">
-        Make More of What You Have.
-    </div>
-
-</div>
-""", unsafe_allow_html=True)
+with logo_center:
+    st.image("ruchi_logo.png", use_container_width=True)
 
 st.markdown("---")
 
@@ -390,24 +379,14 @@ tab1, tab2, tab3, tab4, tab5 = st.tabs([
 
 with tab1:
 
-    st.markdown("""
-    <div class="ruchi-hero">
+    st.caption("YOUR KITCHEN, YOUR FOOD")
 
-        <div class="ruchi-label">
-            YOUR KITCHEN, YOUR FOOD
-        </div>
+st.header("What can we make today?")
 
-        <h2>
-            What can we make today?
-        </h2>
-
-        <p>
-            Tell Ruchi what you already have and what you're
-            in the mood for. We'll start there.
-        </p>
-
-    </div>
-    """, unsafe_allow_html=True)
+st.write(
+    "Tell Ruchi what you already have and what you're "
+    "in the mood for. We'll start there."
+)
 
     craving = st.text_input(
         "What are you in the mood for?",
@@ -601,10 +580,7 @@ with tab1:
 
         st.markdown("---")
 
-        st.markdown(
-            '<div class="ruchi-label">YOUR MEAL</div>',
-            unsafe_allow_html=True
-        )
+        st.caption("YOUR MEAL")
 
         st.header(
             recipe.get(
@@ -833,10 +809,7 @@ with tab1:
 
 with tab2:
 
-    st.markdown(
-        '<div class="ruchi-label">COOK WITH RUCHI</div>',
-        unsafe_allow_html=True
-    )
+    st.caption("COOK WITH RUCHI")
 
     st.header("👩‍🍳 Cooking Mode")
 
@@ -1039,10 +1012,7 @@ with tab2:
 
 with tab3:
 
-    st.markdown(
-        '<div class="ruchi-label">YOUR KITCHEN OVER TIME</div>',
-        unsafe_allow_html=True
-    )
+   st.caption("YOUR KITCHEN OVER TIME")
 
     st.header("📊 Kitchen Insights")
 
@@ -1197,10 +1167,7 @@ with tab3:
 
 with tab4:
 
-    st.markdown(
-        '<div class="ruchi-label">KEEP WHAT INSPIRES YOU</div>',
-        unsafe_allow_html=True
-    )
+    st.caption("KEEP WHAT INSPIRES YOU")
 
     st.header("📚 My Library")
 
@@ -1328,10 +1295,7 @@ with tab4:
 
 with tab5:
 
-    st.markdown(
-        '<div class="ruchi-label">MORE FROM YOUR KITCHEN</div>',
-        unsafe_allow_html=True
-    )
+    st.caption("MORE FROM YOUR KITCHEN")
 
     st.header("✨ Ruchi Plus")
 
@@ -1403,11 +1367,5 @@ Everything in Ruchi, plus:
 
 st.markdown("---")
 
-st.markdown("""
-<div class="ruchi-footer">
-
-<strong>Ruchi</strong><br>
-Make More of What You Have.
-
-</div>
-""", unsafe_allow_html=True)
+st.markdown("---")
+st.caption("Ruchi · Make More of What You Have.")
