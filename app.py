@@ -3,102 +3,221 @@ import streamlit as st
 import json
 from google import genai
 
+# ============================================================
+# PAGE CONFIG
+# ============================================================
+
 st.set_page_config(
-    page_title="Ruchi",
-    page_icon="🍲",
-    layout="wide"
+    page_title="Ruchi | Make More of What You Have",
+    page_icon="🍃",
+    layout="wide",
+    initial_sidebar_state="collapsed"
 )
 
-# -------------------------
+# ============================================================
+# BRAND STYLING
+# ============================================================
+
+st.markdown("""
+<style>
+
+/* ---------- GENERAL ---------- */
+
+.block-container {
+    max-width: 1150px;
+    padding-top: 2rem;
+    padding-bottom: 4rem;
+}
+
+/* ---------- RUCHI BRAND HEADER ---------- */
+
+.ruchi-header {
+    text-align: center;
+    padding: 18px 10px 26px 10px;
+}
+
+.ruchi-symbol {
+    font-size: 42px;
+    line-height: 1;
+    margin-bottom: 5px;
+}
+
+.ruchi-name {
+    font-size: 48px;
+    font-weight: 750;
+    letter-spacing: -1.5px;
+    margin: 0;
+}
+
+.ruchi-tagline {
+    font-size: 18px;
+    opacity: 0.72;
+    margin-top: 4px;
+}
+
+/* ---------- HERO ---------- */
+
+.ruchi-hero {
+    text-align: center;
+    padding: 18px 10px 30px 10px;
+}
+
+.ruchi-hero h2 {
+    margin-bottom: 8px;
+}
+
+.ruchi-hero p {
+    font-size: 17px;
+    opacity: 0.75;
+    max-width: 720px;
+    margin: auto;
+}
+
+/* ---------- SMALL LABEL ---------- */
+
+.ruchi-label {
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: 1.4px;
+    font-weight: 700;
+    opacity: 0.55;
+}
+
+/* ---------- CARDS ---------- */
+
+.ruchi-card {
+    border: 1px solid rgba(128,128,128,0.20);
+    border-radius: 16px;
+    padding: 18px;
+    margin-bottom: 12px;
+}
+
+/* ---------- FOOTER ---------- */
+
+.ruchi-footer {
+    text-align: center;
+    opacity: 0.55;
+    font-size: 13px;
+    padding-top: 20px;
+}
+
+</style>
+""", unsafe_allow_html=True)
+
+
+# ============================================================
 # SESSION STATE
-# -------------------------
+# ============================================================
 
-if "saved_recipes" not in st.session_state:
-    st.session_state.saved_recipes = []
+defaults = {
+    "saved_recipes": [],
+    "saved_links": [],
+    "meal_options": [],
+    "current_recipe": None,
+    "cooking_step": 0,
+    "cooking_started": False,
+    "cooking_history": [],
+    "last_inputs": {}
+}
 
-if "saved_links" not in st.session_state:
-    st.session_state.saved_links = []
-
-if "current_recipe" not in st.session_state:
-    st.session_state.current_recipe = None
+for key, value in defaults.items():
+    if key not in st.session_state:
+        st.session_state[key] = value
 
 
-# -------------------------
-# AI CONNECTION
-# -------------------------
+# ============================================================
+# GEMINI
+# ============================================================
 
 def get_client():
     try:
-        api_key = st.secrets["GEMINI_API_KEY"]
-        return genai.Client(api_key=api_key)
+        return genai.Client(
+            api_key=st.secrets["GEMINI_API_KEY"]
+        )
     except Exception:
         return None
 
 
-def generate_recipe(
+# ============================================================
+# GENERATE THREE MEAL OPTIONS
+# ============================================================
+
+def generate_meal_options(
     craving,
-    available_ingredients,
+    ingredients,
     servings,
     diet,
     allergies,
-    spice_level
+    spice
 ):
+
     client = get_client()
 
     if client is None:
-        return None, "Gemini API key has not been added to Streamlit Secrets."
+        return None, "Gemini API key is unavailable."
 
     prompt = f"""
-You are Ruchi, an AI assistant for everyday home cooking.
+You are Ruchi, an intelligent everyday kitchen assistant.
 
-Create one practical recipe based on the user's needs.
+Ruchi's purpose is to help people make more of the food and
+ingredients they already have.
 
-USER INPUT
-Craving or dish idea: {craving}
-Ingredients already available: {available_ingredients}
-Servings: {servings}
-Dietary preference: {diet}
-Allergies: {allergies}
-Spice preference: {spice_level}
+USER:
 
-Return ONLY valid JSON in this structure:
+Craving:
+{craving}
+
+Ingredients already available:
+{ingredients}
+
+Servings:
+{servings}
+
+Dietary preference:
+{diet}
+
+Allergies / avoid:
+{allergies}
+
+Spice preference:
+{spice}
+
+Suggest exactly THREE practical meals.
+
+Priorities:
+
+1. Make useful use of ingredients already available.
+2. Match the user's craving where possible.
+3. Avoid unnecessary additional ingredients.
+4. Respect dietary preferences and allergies.
+5. Keep meals realistic for everyday home cooking.
+6. Give meaningfully different options.
+
+Return ONLY valid JSON:
 
 {{
-    "dish_name": "Name of dish",
-    "description": "One short sentence",
-    "cooking_time": "Example: 30 minutes",
-    "servings": {servings},
-    "ingredients": [
+    "options": [
         {{
-            "name": "Ingredient",
-            "quantity": "Quantity",
-            "already_have": true
+            "dish_name": "Dish name",
+            "description": "Short appetising description",
+            "why_it_fits": "Short explanation of why this is a good use of what the user has"
+        }},
+        {{
+            "dish_name": "Dish name",
+            "description": "Short appetising description",
+            "why_it_fits": "Short explanation"
+        }},
+        {{
+            "dish_name": "Dish name",
+            "description": "Short appetising description",
+            "why_it_fits": "Short explanation"
         }}
-    ],
-    "steps": [
-        "Step 1",
-        "Step 2"
-    ],
-    "substitutions": [
-        "Possible substitution 1",
-        "Possible substitution 2"
-    ],
-    "nutrition": {{
-        "calories": "Approximate calories per serving",
-        "protein": "Approximate protein per serving"
-    }}
+    ]
 }}
-
-Important:
-- Keep the recipe realistic and suitable for daily cooking.
-- Prefer common ingredients.
-- Respect allergies and dietary preferences.
-- Mark already_have as true only when the ingredient appears in the user's available ingredients.
-- If the user gives no available ingredients, mark all ingredients as false.
-- Do not include commentary outside the JSON.
 """
 
     try:
+
         response = client.models.generate_content(
             model="gemini-3.8-flash",
             contents=prompt
@@ -107,65 +226,213 @@ Important:
         raw = response.text.strip()
 
         if raw.startswith("```"):
-            raw = raw.replace("```json", "").replace("```", "").strip()
+            raw = (
+                raw.replace("```json", "")
+                   .replace("```", "")
+                   .strip()
+            )
 
-        recipe = json.loads(raw)
+        data = json.loads(raw)
 
-        return recipe, None
+        return data["options"], None
 
     except Exception as e:
         return None, str(e)
 
 
-# -------------------------
-# APP HEADER
-# -------------------------
+# ============================================================
+# GENERATE FULL RECIPE
+# ============================================================
 
-st.title("🍲 Ruchi")
-st.subheader("Your AI recipe maker for everyday cooking")
+def generate_recipe(
+    dish,
+    ingredients,
+    servings,
+    diet,
+    allergies,
+    spice
+):
 
-st.write(
-    "Tell Ruchi what you're craving or what ingredients you already have, "
-    "and get a personalised recipe you can actually cook."
-)
+    client = get_client()
+
+    if client is None:
+        return None, "Gemini API key is unavailable."
+
+    prompt = f"""
+You are Ruchi, an intelligent everyday kitchen assistant.
+
+Create a practical home-cooking recipe.
+
+Dish:
+{dish}
+
+Ingredients the user already has:
+{ingredients}
+
+Servings:
+{servings}
+
+Diet:
+{diet}
+
+Allergies / avoid:
+{allergies}
+
+Spice preference:
+{spice}
+
+Ruchi should help the user make useful use of ingredients
+already available.
+
+Return ONLY valid JSON:
+
+{{
+    "dish_name": "Dish name",
+
+    "description": "One short appetising description",
+
+    "cooking_time": "Example: 30 minutes",
+
+    "servings": {servings},
+
+    "ingredients": [
+        {{
+            "name": "Ingredient",
+            "quantity": "Quantity",
+            "already_have": true
+        }}
+    ],
+
+    "steps": [
+        "Step one",
+        "Step two"
+    ],
+
+    "substitutions": [
+        "Useful substitution"
+    ],
+
+    "nutrition": {{
+        "calories": "Approximate calories per serving",
+        "protein": "Approximate protein per serving"
+    }}
+}}
+
+Mark already_have as true only when the ingredient
+is reasonably present in the user's available ingredient list.
+
+Nutrition values must be approximate.
+
+Do not include text outside the JSON.
+"""
+
+    try:
+
+        response = client.models.generate_content(
+            model="gemini-3.8-flash",
+            contents=prompt
+        )
+
+        raw = response.text.strip()
+
+        if raw.startswith("```"):
+            raw = (
+                raw.replace("```json", "")
+                   .replace("```", "")
+                   .strip()
+            )
+
+        return json.loads(raw), None
+
+    except Exception as e:
+        return None, str(e)
+
+
+# ============================================================
+# BRAND HEADER
+# ============================================================
+
+st.markdown("""
+<div class="ruchi-header">
+
+    <div class="ruchi-symbol">◡</div>
+
+    <div class="ruchi-name">
+        Ruchi
+    </div>
+
+    <div class="ruchi-tagline">
+        Make More of What You Have.
+    </div>
+
+</div>
+""", unsafe_allow_html=True)
 
 st.markdown("---")
 
 
-# -------------------------
-# TABS
-# -------------------------
+# ============================================================
+# NAVIGATION
+# ============================================================
 
-tab1, tab2, tab3, tab4 = st.tabs(
-    ["🍳 Create Recipe", "🛒 Ingredient Cart", "📚 My Library", "💎 Ruchi Plus"]
-)
+tab1, tab2, tab3, tab4, tab5 = st.tabs([
+    "🍳 My Kitchen",
+    "👩‍🍳 Cooking Mode",
+    "📊 Kitchen Insights",
+    "📚 My Library",
+    "✨ Ruchi Plus"
+])
 
 
-# -------------------------
-# CREATE RECIPE
-# -------------------------
+# ============================================================
+# TAB 1 — MY KITCHEN
+# ============================================================
 
 with tab1:
 
-    st.header("What would you like to cook?")
+    st.markdown("""
+    <div class="ruchi-hero">
+
+        <div class="ruchi-label">
+            YOUR KITCHEN, YOUR FOOD
+        </div>
+
+        <h2>
+            What can we make today?
+        </h2>
+
+        <p>
+            Tell Ruchi what you already have and what you're
+            in the mood for. We'll start there.
+        </p>
+
+    </div>
+    """, unsafe_allow_html=True)
 
     craving = st.text_input(
-        "Tell Ruchi what you're craving or the dish you want",
-        placeholder="Example: I want something spicy and high-protein"
+        "What are you in the mood for?",
+        placeholder=(
+            "Something spicy, comforting, light, "
+            "high-protein..."
+        )
     )
 
-    available_ingredients = st.text_area(
-        "What ingredients do you already have?",
-        placeholder="Example: paneer, onion, tomato, curd"
+    ingredients = st.text_area(
+        "What's already in your kitchen?",
+        placeholder=(
+            "Paneer, tomatoes, onion, curd, "
+            "capsicum..."
+        )
     )
 
-    st.subheader("Personalise your recipe")
+    st.markdown("### Make it yours")
 
-    col1, col2 = st.columns(2)
+    c1, c2 = st.columns(2)
 
-    with col1:
+    with c1:
+
         servings = st.number_input(
-            "Number of servings",
+            "Servings",
             min_value=1,
             max_value=10,
             value=2
@@ -181,8 +448,9 @@ with tab1:
             ]
         )
 
-    with col2:
-        spice_level = st.selectbox(
+    with c2:
+
+        spice = st.selectbox(
             "Spice preference",
             [
                 "Mild",
@@ -193,327 +461,953 @@ with tab1:
         )
 
         allergies = st.text_input(
-            "Allergies or ingredients to avoid",
-            placeholder="Example: peanuts, mushrooms"
+            "Anything to avoid?",
+            placeholder="Peanuts, mushrooms..."
         )
 
-    if st.button("✨ Create My Recipe", use_container_width=True):
+    if st.button(
+        "✨ Show Me What I Can Make",
+        type="primary",
+        use_container_width=True
+    ):
 
-        if not craving and not available_ingredients:
+        if not craving.strip() and not ingredients.strip():
+
             st.warning(
-                "Please enter either a craving/dish idea or some available ingredients."
+                "Give Ruchi a craving or a few ingredients "
+                "to start with."
             )
 
         else:
-            with st.spinner("Ruchi is creating your recipe..."):
 
-                recipe, error = generate_recipe(
+            st.session_state.last_inputs = {
+                "craving": craving,
+                "ingredients": ingredients,
+                "servings": servings,
+                "diet": diet,
+                "allergies": allergies,
+                "spice": spice
+            }
+
+            with st.spinner(
+                "Looking through your kitchen..."
+            ):
+
+                options, error = generate_meal_options(
                     craving,
-                    available_ingredients,
+                    ingredients,
                     servings,
                     diet,
                     allergies,
-                    spice_level
+                    spice
                 )
 
             if error:
-                st.error(f"Something went wrong: {error}")
+
+                st.error(
+                    f"Ruchi couldn't generate options: {error}"
+                )
 
             else:
-                st.session_state.current_recipe = recipe
-                st.success("Your recipe is ready!")
 
+                st.session_state.meal_options = options
+                st.session_state.current_recipe = None
+                st.session_state.cooking_started = False
+                st.session_state.cooking_step = 0
+
+    # ========================================================
+    # THREE FOOD CHOICES
+    # ========================================================
+
+    if st.session_state.meal_options:
+
+        st.markdown("---")
+
+        st.markdown(
+            "### 🍽️ Here's what you could make"
+        )
+
+        st.caption(
+            "These options prioritise useful ingredients "
+            "already in your kitchen."
+        )
+
+        cols = st.columns(3)
+
+        for i, option in enumerate(
+            st.session_state.meal_options[:3]
+        ):
+
+            with cols[i]:
+
+                st.markdown(
+                    f"### {option.get('dish_name', 'Meal')}"
+                )
+
+                st.write(
+                    option.get("description", "")
+                )
+
+                st.info(
+                    option.get(
+                        "why_it_fits",
+                        "A practical option using what you have."
+                    )
+                )
+
+                if st.button(
+                    "Choose this meal",
+                    key=f"meal_{i}",
+                    use_container_width=True
+                ):
+
+                    data = st.session_state.last_inputs
+
+                    with st.spinner(
+                        "Turning it into your meal..."
+                    ):
+
+                        recipe, error = generate_recipe(
+                            option.get("dish_name", ""),
+                            data["ingredients"],
+                            data["servings"],
+                            data["diet"],
+                            data["allergies"],
+                            data["spice"]
+                        )
+
+                    if error:
+
+                        st.error(
+                            f"Ruchi couldn't build the meal: {error}"
+                        )
+
+                    else:
+
+                        st.session_state.current_recipe = recipe
+                        st.session_state.cooking_step = 0
+                        st.session_state.cooking_started = False
+
+                        st.rerun()
+
+
+    # ========================================================
+    # MEAL INTELLIGENCE
+    # ========================================================
 
     recipe = st.session_state.current_recipe
 
     if recipe:
 
         st.markdown("---")
-        st.header(recipe.get("dish_name", "Your Recipe"))
 
-        st.write(recipe.get("description", ""))
+        st.markdown(
+            '<div class="ruchi-label">YOUR MEAL</div>',
+            unsafe_allow_html=True
+        )
 
-        col1, col2 = st.columns(2)
+        st.header(
+            recipe.get(
+                "dish_name",
+                "Your Meal"
+            )
+        )
 
-        with col1:
-            st.metric(
-                "Cooking Time",
-                recipe.get("cooking_time", "Not specified")
+        st.write(
+            recipe.get(
+                "description",
+                ""
+            )
+        )
+
+        ingredients_list = recipe.get(
+            "ingredients",
+            []
+        )
+
+        already_have = [
+            x for x in ingredients_list
+            if x.get("already_have")
+        ]
+
+        missing = [
+            x for x in ingredients_list
+            if not x.get("already_have")
+        ]
+
+        m1, m2, m3 = st.columns(3)
+
+        m1.metric(
+            "⏱️ Time",
+            recipe.get(
+                "cooking_time",
+                "N/A"
+            )
+        )
+
+        m2.metric(
+            "🍽️ Serves",
+            recipe.get(
+                "servings",
+                "-"
+            )
+        )
+
+        m3.metric(
+            "🥕 Already Have",
+            f"{len(already_have)}/{len(ingredients_list)}"
+        )
+
+        st.markdown("### 🥕 Ingredient Intelligence")
+
+        have_col, need_col = st.columns(2)
+
+        with have_col:
+
+            st.markdown(
+                "#### Already in your kitchen"
             )
 
-        with col2:
-            st.metric(
-                "Servings",
-                recipe.get("servings", servings)
+            if already_have:
+
+                for item in already_have:
+
+                    st.write(
+                        f"✓ **{item.get('name')}** "
+                        f"— {item.get('quantity')}"
+                    )
+
+            else:
+
+                st.write(
+                    "No ingredients were matched."
+                )
+
+        with need_col:
+
+            st.markdown(
+                "#### You may still need"
             )
 
-        st.subheader("Ingredients")
+            if missing:
 
-        for item in recipe.get("ingredients", []):
-            status = "✅" if item.get("already_have") else "🛒"
+                shopping_list = []
 
-            st.write(
-                f"{status} **{item.get('name')}** — "
-                f"{item.get('quantity')}"
-            )
+                for item in missing:
 
-        st.subheader("Steps")
+                    name = item.get(
+                        "name",
+                        "Ingredient"
+                    )
 
-        for i, step in enumerate(recipe.get("steps", []), start=1):
-            st.write(f"**{i}.** {step}")
+                    quantity = item.get(
+                        "quantity",
+                        ""
+                    )
 
-        st.subheader("Possible Substitutions")
+                    st.checkbox(
+                        f"{name} — {quantity}",
+                        key=f"shop_{name}_{recipe.get('dish_name')}"
+                    )
 
-        substitutions = recipe.get("substitutions", [])
+                    shopping_list.append(
+                        f"{name} — {quantity}"
+                    )
+
+                st.text_area(
+                    "Shopping list",
+                    "\n".join(shopping_list),
+                    height=120
+                )
+
+            else:
+
+                st.success(
+                    "You already have everything you need."
+                )
+
+        # ====================================================
+        # SUBSTITUTIONS
+        # ====================================================
+
+        st.markdown("### 🔄 Easy Swaps")
+
+        substitutions = recipe.get(
+            "substitutions",
+            []
+        )
 
         if substitutions:
-            for substitution in substitutions:
-                st.write(f"- {substitution}")
+
+            for item in substitutions:
+                st.write(f"• {item}")
+
         else:
-            st.write("No substitutions suggested.")
 
-        st.subheader("Basic Nutrition")
+            st.write(
+                "No substitutions needed."
+            )
 
-        nutrition = recipe.get("nutrition", {})
+        # ====================================================
+        # NUTRITION
+        # ====================================================
 
-        col1, col2 = st.columns(2)
+        st.markdown("### 🥗 Nutrition Snapshot")
 
-        col1.metric(
-            "Calories / serving",
-            nutrition.get("calories", "N/A")
+        nutrition = recipe.get(
+            "nutrition",
+            {}
         )
 
-        col2.metric(
-            "Protein / serving",
-            nutrition.get("protein", "N/A")
+        n1, n2 = st.columns(2)
+
+        n1.metric(
+            "Approx. calories / serving",
+            nutrition.get(
+                "calories",
+                "N/A"
+            )
         )
 
-        if st.button("💾 Save Recipe"):
-            if recipe not in st.session_state.saved_recipes:
-                st.session_state.saved_recipes.append(recipe)
+        n2.metric(
+            "Approx. protein / serving",
+            nutrition.get(
+                "protein",
+                "N/A"
+            )
+        )
 
-            st.success("Recipe saved to your Library.")
+        st.caption(
+            "Nutrition values are approximate."
+        )
+
+        # ====================================================
+        # ACTIONS
+        # ====================================================
+
+        save_col, cook_col = st.columns(2)
+
+        with save_col:
+
+            if st.button(
+                "♡ Save for Later",
+                use_container_width=True
+            ):
+
+                if (
+                    recipe not in
+                    st.session_state.saved_recipes
+                ):
+
+                    st.session_state.saved_recipes.append(
+                        recipe
+                    )
+
+                st.success(
+                    "Saved to My Library."
+                )
+
+        with cook_col:
+
+            if st.button(
+                "👩‍🍳 Start Cooking",
+                type="primary",
+                use_container_width=True
+            ):
+
+                st.session_state.cooking_started = True
+                st.session_state.cooking_step = 0
+
+                st.success(
+                    "Your Cooking Mode is ready."
+                )
+
+                st.info(
+                    "Open the Cooking Mode tab above."
+                )
 
 
-# -------------------------
-# INGREDIENT CART
-# -------------------------
+# ============================================================
+# TAB 2 — COOKING MODE
+# ============================================================
 
 with tab2:
 
-    st.header("🛒 Smart Ingredient Cart")
+    st.markdown(
+        '<div class="ruchi-label">COOK WITH RUCHI</div>',
+        unsafe_allow_html=True
+    )
+
+    st.header("👩‍🍳 Cooking Mode")
 
     recipe = st.session_state.current_recipe
 
     if not recipe:
+
         st.info(
-            "Create a recipe first. Ruchi will then show the ingredients you still need."
+            "Choose a meal from My Kitchen first."
+        )
+
+    elif not st.session_state.cooking_started:
+
+        st.subheader(
+            recipe.get(
+                "dish_name",
+                "Your Meal"
+            )
+        )
+
+        st.write(
+            "Ready when you are."
+        )
+
+        if st.button(
+            "🔥 Let's Cook",
+            type="primary",
+            use_container_width=True
+        ):
+
+            st.session_state.cooking_started = True
+            st.session_state.cooking_step = 0
+
+            st.rerun()
+
+    else:
+
+        steps = recipe.get(
+            "steps",
+            []
+        )
+
+        current = st.session_state.cooking_step
+
+        if not steps:
+
+            st.warning(
+                "No cooking steps were generated."
+            )
+
+        elif current < len(steps):
+
+            st.caption(
+                f"STEP {current + 1} OF {len(steps)}"
+            )
+
+            st.progress(
+                current / len(steps)
+            )
+
+            st.subheader(
+                steps[current]
+            )
+
+            previous, next_step = st.columns(2)
+
+            with previous:
+
+                if st.button(
+                    "← Previous",
+                    disabled=(current == 0),
+                    use_container_width=True
+                ):
+
+                    st.session_state.cooking_step -= 1
+                    st.rerun()
+
+            with next_step:
+
+                text = (
+                    "Finish Cooking ✓"
+                    if current == len(steps) - 1
+                    else "Done — Next Step →"
+                )
+
+                if st.button(
+                    text,
+                    type="primary",
+                    use_container_width=True
+                ):
+
+                    st.session_state.cooking_step += 1
+                    st.rerun()
+
+        else:
+
+            st.progress(1.0)
+
+            st.success(
+                "You made it! 🍽️"
+            )
+
+            st.header(
+                recipe.get(
+                    "dish_name",
+                    "Your Meal"
+                )
+            )
+
+            st.write(
+                "Before you go, tell Ruchi how it turned out."
+            )
+
+            rating = st.slider(
+                "How did it turn out?",
+                1,
+                5,
+                4
+            )
+
+            make_again = st.radio(
+                "Would you make this again?",
+                [
+                    "Yes",
+                    "Maybe",
+                    "No"
+                ],
+                horizontal=True
+            )
+
+            leftovers = st.radio(
+                "Any leftovers?",
+                [
+                    "No",
+                    "Yes"
+                ],
+                horizontal=True
+            )
+
+            if st.button(
+                "🍽️ I Made This",
+                type="primary",
+                use_container_width=True
+            ):
+
+                record = {
+                    "dish_name":
+                        recipe.get(
+                            "dish_name",
+                            "Meal"
+                        ),
+
+                    "ingredients":
+                        recipe.get(
+                            "ingredients",
+                            []
+                        ),
+
+                    "nutrition":
+                        recipe.get(
+                            "nutrition",
+                            {}
+                        ),
+
+                    "rating":
+                        rating,
+
+                    "make_again":
+                        make_again,
+
+                    "leftovers":
+                        leftovers
+                }
+
+                st.session_state.cooking_history.append(
+                    record
+                )
+
+                if (
+                    recipe not in
+                    st.session_state.saved_recipes
+                ):
+
+                    st.session_state.saved_recipes.append(
+                        recipe
+                    )
+
+                st.session_state.cooking_started = False
+                st.session_state.cooking_step = 0
+
+                st.success(
+                    "Meal logged. Your Kitchen Insights "
+                    "have been updated."
+                )
+
+
+# ============================================================
+# TAB 3 — KITCHEN INSIGHTS
+# ============================================================
+
+with tab3:
+
+    st.markdown(
+        '<div class="ruchi-label">YOUR KITCHEN OVER TIME</div>',
+        unsafe_allow_html=True
+    )
+
+    st.header("📊 Kitchen Insights")
+
+    history = st.session_state.cooking_history
+
+    if not history:
+
+        st.info(
+            "Your kitchen story starts with your first meal. "
+            "Cook something with Ruchi and tap "
+            "'I Made This' to begin."
         )
 
     else:
 
-        missing = [
-            item
-            for item in recipe.get("ingredients", [])
-            if not item.get("already_have")
-        ]
+        pantry_uses = []
+        ratings = []
+        repeat_meals = 0
 
-        already_have = [
-            item
-            for item in recipe.get("ingredients", [])
-            if item.get("already_have")
-        ]
+        for meal in history:
 
-        st.subheader("You already have")
-
-        if already_have:
-            for item in already_have:
-                st.write(
-                    f"✅ {item.get('name')} — {item.get('quantity')}"
+            ratings.append(
+                meal.get(
+                    "rating",
+                    0
                 )
-        else:
-            st.write("No available ingredients were matched.")
+            )
 
-        st.subheader("You still need")
+            if meal.get(
+                "make_again"
+            ) == "Yes":
 
-        if missing:
-            shopping_text = ""
+                repeat_meals += 1
 
-            for item in missing:
-                st.checkbox(
-                    f"{item.get('name')} — {item.get('quantity')}",
-                    key=f"cart_{item.get('name')}"
+            for ingredient in meal.get(
+                "ingredients",
+                []
+            ):
+
+                if ingredient.get(
+                    "already_have"
+                ):
+
+                    pantry_uses.append(
+                        ingredient.get(
+                            "name",
+                            "Ingredient"
+                        )
+                    )
+
+        avg_rating = (
+            sum(ratings) / len(ratings)
+            if ratings
+            else 0
+        )
+
+        c1, c2, c3, c4 = st.columns(4)
+
+        c1.metric(
+            "Meals Made",
+            len(history)
+        )
+
+        c2.metric(
+            "Pantry Ingredient Uses",
+            len(pantry_uses)
+        )
+
+        c3.metric(
+            "Average Rating",
+            f"{avg_rating:.1f}/5"
+        )
+
+        c4.metric(
+            "Would Make Again",
+            repeat_meals
+        )
+
+        st.markdown("---")
+
+        st.subheader(
+            "🥕 What You've Been Using"
+        )
+
+        if pantry_uses:
+
+            unique = list(
+                dict.fromkeys(
+                    pantry_uses
                 )
+            )
 
-                shopping_text += (
-                    f"{item.get('name')} — "
-                    f"{item.get('quantity')}\n"
-                )
-
-            st.text_area(
-                "Copy your shopping list",
-                shopping_text,
-                height=150
+            st.write(
+                " • ".join(unique)
             )
 
         else:
-            st.success("You already have everything needed for this recipe! 🎉")
+
+            st.write(
+                "No pantry ingredient use logged yet."
+            )
+
+        st.subheader(
+            "🍲 Your Cooking History"
+        )
+
+        for meal in reversed(history):
+
+            title = meal.get(
+                "dish_name",
+                "Meal"
+            )
+
+            with st.expander(title):
+
+                st.write(
+                    f"⭐ **Rating:** "
+                    f"{meal.get('rating')}/5"
+                )
+
+                st.write(
+                    f"♡ **Make again:** "
+                    f"{meal.get('make_again')}"
+                )
+
+                st.write(
+                    f"🥡 **Leftovers:** "
+                    f"{meal.get('leftovers')}"
+                )
+
+                nutrition = meal.get(
+                    "nutrition",
+                    {}
+                )
+
+                st.write(
+                    "**Nutrition snapshot:** "
+                    f"{nutrition.get('calories', 'N/A')} calories, "
+                    f"{nutrition.get('protein', 'N/A')} protein "
+                    "per serving (approx.)"
+                )
+
+        st.caption(
+            "Kitchen Insights are based only on meals and "
+            "ingredients logged during your Ruchi session."
+        )
 
 
-# -------------------------
-# LIBRARY
-# -------------------------
+# ============================================================
+# TAB 4 — LIBRARY
+# ============================================================
 
-with tab3:
+with tab4:
+
+    st.markdown(
+        '<div class="ruchi-label">KEEP WHAT INSPIRES YOU</div>',
+        unsafe_allow_html=True
+    )
 
     st.header("📚 My Library")
 
-    recipe_tab, inspiration_tab = st.tabs(
-        ["Saved Recipes", "Saved Inspiration"]
-    )
+    meals_tab, inspiration_tab = st.tabs([
+        "Saved Meals",
+        "Food Inspiration"
+    ])
 
-    with recipe_tab:
+    with meals_tab:
 
         if not st.session_state.saved_recipes:
-            st.info("You haven't saved any recipes yet.")
+
+            st.info(
+                "Meals you save will appear here."
+            )
 
         else:
-            for i, recipe in enumerate(
-                st.session_state.saved_recipes,
-                start=1
-            ):
+
+            for recipe in st.session_state.saved_recipes:
+
                 with st.expander(
-                    f"{i}. {recipe.get('dish_name', 'Saved Recipe')}"
+                    recipe.get(
+                        "dish_name",
+                        "Saved Meal"
+                    )
                 ):
-                    st.write(recipe.get("description", ""))
 
-                    st.write("**Ingredients**")
+                    st.write(
+                        recipe.get(
+                            "description",
+                            ""
+                        )
+                    )
 
-                    for item in recipe.get("ingredients", []):
+                    st.markdown(
+                        "**Ingredients**"
+                    )
+
+                    for item in recipe.get(
+                        "ingredients",
+                        []
+                    ):
+
                         st.write(
-                            f"- {item.get('name')} — "
-                            f"{item.get('quantity')}"
+                            f"• {item.get('name')} "
+                            f"— {item.get('quantity')}"
                         )
 
-                    st.write("**Steps**")
+                    st.markdown(
+                        "**How to make it**"
+                    )
 
-                    for j, step in enumerate(
-                        recipe.get("steps", []),
-                        start=1
+                    for i, step in enumerate(
+                        recipe.get(
+                            "steps",
+                            []
+                        ),
+                        1
                     ):
-                        st.write(f"{j}. {step}")
+
+                        st.write(
+                            f"{i}. {step}"
+                        )
 
     with inspiration_tab:
 
         st.write(
-            "Save a food reel, YouTube video, recipe page or other food link "
-            "that you want to revisit later."
+            "Saw something you'd like to cook later? "
+            "Keep the link here."
         )
 
-        inspiration_url = st.text_input(
-            "Food inspiration URL",
-            placeholder="Paste a link here"
+        url = st.text_input(
+            "Food inspiration link",
+            placeholder=(
+                "Paste a recipe, reel or video link"
+            )
         )
 
-        inspiration_note = st.text_input(
-            "Optional note",
-            placeholder="Example: Try this pasta next weekend"
+        note = st.text_input(
+            "Add a note",
+            placeholder=(
+                "Try this for dinner..."
+            )
         )
 
-        if st.button("🔖 Save Inspiration"):
+        if st.button(
+            "🔖 Save Inspiration"
+        ):
 
-            if inspiration_url:
+            if url.strip():
 
-                st.session_state.saved_links.append(
-                    {
-                        "url": inspiration_url,
-                        "note": inspiration_note
-                    }
+                st.session_state.saved_links.append({
+                    "url": url,
+                    "note": note
+                })
+
+                st.success(
+                    "Saved."
                 )
-
-                st.success("Saved to your Inspiration Library.")
 
             else:
-                st.warning("Please paste a URL first.")
 
-        st.markdown("---")
-
-        if not st.session_state.saved_links:
-            st.info("No inspiration links saved yet.")
-
-        else:
-            for i, item in enumerate(
-                st.session_state.saved_links,
-                start=1
-            ):
-                st.write(
-                    f"**{i}.** {item.get('note') or 'Saved food inspiration'}"
+                st.warning(
+                    "Paste a link first."
                 )
 
-                st.write(item.get("url"))
+        if st.session_state.saved_links:
 
-# -------------------------
-# RUCHI PLUS / FREEMIUM
-# -------------------------
+            st.markdown("---")
 
-with tab4:
+            for item in st.session_state.saved_links:
 
-    st.header("💎 Ruchi Plus")
-    st.write(
-        "Start cooking with Ruchi for free. "
-        "Upgrade later for a more personalised cooking experience."
+                st.markdown(
+                    f"**{item.get('note') or 'Food idea'}**"
+                )
+
+                st.write(
+                    item.get("url")
+                )
+
+
+# ============================================================
+# TAB 5 — RUCHI PLUS
+# ============================================================
+
+with tab5:
+
+    st.markdown(
+        '<div class="ruchi-label">MORE FROM YOUR KITCHEN</div>',
+        unsafe_allow_html=True
     )
 
-    free_col, plus_col = st.columns(2)
+    st.header("✨ Ruchi Plus")
 
-    with free_col:
-        st.subheader("🍲 Ruchi Free")
+    st.write(
+        "The core Ruchi experience stays simple. "
+        "Ruchi Plus represents the future premium layer "
+        "for people who want deeper kitchen intelligence."
+    )
+
+    free, plus = st.columns(2)
+
+    with free:
+
+        st.subheader(
+            "Ruchi"
+        )
+
         st.markdown("""
-        **₹0**
+**Free**
 
-        ✓ AI recipe generation  
-        ✓ Craving-based recipes  
-        ✓ Cook with ingredients you already have  
-        ✓ Dietary and allergy preferences  
-        ✓ Smart Ingredient Cart  
-        ✓ Save recipes and food inspiration
-        """)
+✓ Meal discovery  
+✓ Ingredient-based suggestions  
+✓ Personalised meals  
+✓ Ingredient intelligence  
+✓ Cooking Mode  
+✓ Kitchen Insights  
+✓ Saved meals  
+✓ Food inspiration
+""")
 
-        st.success("Your current plan")
+        st.success(
+            "Current plan"
+        )
 
-    with plus_col:
-        st.subheader("✨ Ruchi Plus")
+    with plus:
+
+        st.subheader(
+            "Ruchi Plus"
+        )
+
         st.markdown("""
-        **Coming Soon**
+**Coming Soon**
 
-        Everything in Free, plus:
+Everything in Ruchi, plus:
 
-        ✓ More recipe generations  
-        ✓ Advanced nutrition insights  
-        ✓ Deeper personalisation  
-        ✓ Expanded recipe history  
-        ✓ Advanced meal preferences  
-        ✓ Future premium Ruchi features
-        """)
+✓ Deeper nutrition insights  
+✓ Advanced pantry intelligence  
+✓ Longer cooking history  
+✓ Advanced meal planning  
+✓ Deeper personalisation  
+✓ Future premium features
+""")
 
         st.button(
-            "🔔 Notify Me When Ruchi Plus Launches",
+            "Coming Soon",
             disabled=True,
             use_container_width=True
         )
 
-    st.info(
-        "Ruchi Plus is a proposed premium plan for the future. "
-        "Payments are not enabled in this MVP."
+    st.caption(
+        "Ruchi Plus is a proposed future subscription tier. "
+        "Payments are not part of the current MVP."
     )
 
 
-# -------------------------
+# ============================================================
 # FOOTER
-# -------------------------
+# ============================================================
 
 st.markdown("---")
 
-st.caption(
-    "Ruchi MVP | AI recipe maker for everyday cooking"
-)
+st.markdown("""
+<div class="ruchi-footer">
+
+<strong>Ruchi</strong><br>
+Make More of What You Have.
+
+</div>
+""", unsafe_allow_html=True)
