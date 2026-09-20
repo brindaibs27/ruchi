@@ -380,28 +380,21 @@ tab1, tab2, tab3, tab4, tab5 = st.tabs([
 with tab1:
 
     st.caption("YOUR KITCHEN, YOUR FOOD")
+    st.header("What can we make today?")
 
-st.header("What can we make today?")
-
-st.write(
-    "Tell Ruchi what you already have and what you're "
-    "in the mood for. We'll start there."
-)
+    st.write(
+        "Tell Ruchi what you already have and what you're "
+        "in the mood for. We'll start there."
+    )
 
     craving = st.text_input(
         "What are you in the mood for?",
-        placeholder=(
-            "Something spicy, comforting, light, "
-            "high-protein..."
-        )
+        placeholder="Something spicy, comforting, light, high-protein..."
     )
 
     ingredients = st.text_area(
         "What's already in your kitchen?",
-        placeholder=(
-            "Paneer, tomatoes, onion, curd, "
-            "capsicum..."
-        )
+        placeholder="Paneer, tomatoes, onion, curd, capsicum..."
     )
 
     st.markdown("### Make it yours")
@@ -409,7 +402,6 @@ st.write(
     c1, c2 = st.columns(2)
 
     with c1:
-
         servings = st.number_input(
             "Servings",
             min_value=1,
@@ -428,7 +420,6 @@ st.write(
         )
 
     with c2:
-
         spice = st.selectbox(
             "Spice preference",
             [
@@ -451,14 +442,11 @@ st.write(
     ):
 
         if not craving.strip() and not ingredients.strip():
-
             st.warning(
-                "Give Ruchi a craving or a few ingredients "
-                "to start with."
+                "Give Ruchi a craving or a few ingredients to start with."
             )
 
         else:
-
             st.session_state.last_inputs = {
                 "craving": craving,
                 "ingredients": ingredients,
@@ -468,10 +456,7 @@ st.write(
                 "spice": spice
             }
 
-            with st.spinner(
-                "Looking through your kitchen..."
-            ):
-
+            with st.spinner("Looking through your kitchen..."):
                 options, error = generate_meal_options(
                     craving,
                     ingredients,
@@ -482,13 +467,11 @@ st.write(
                 )
 
             if error:
-
                 st.error(
                     f"Ruchi couldn't generate options: {error}"
                 )
 
             else:
-
                 st.session_state.meal_options = options
                 st.session_state.current_recipe = None
                 st.session_state.cooking_started = False
@@ -497,7 +480,6 @@ st.write(
     # ========================================================
     # THREE FOOD CHOICES
     # ========================================================
-
     if st.session_state.meal_options:
 
         st.markdown("---")
@@ -1012,7 +994,7 @@ with tab2:
 
 with tab3:
 
-   st.caption("YOUR KITCHEN OVER TIME")
+    st.caption("YOUR KITCHEN OVER TIME")
 
     st.header("📊 Kitchen Insights")
 
@@ -1364,8 +1346,6 @@ Everything in Ruchi, plus:
 # ============================================================
 # FOOTER
 # ============================================================
-
-st.markdown("---")
 
 st.markdown("---")
 st.caption("Ruchi · Make More of What You Have.")
