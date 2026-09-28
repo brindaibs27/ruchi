@@ -451,6 +451,60 @@ Do not include text outside the JSON.
         return json.loads(raw), None
 
     except Exception as e:
+        error_text = str(e).lower()
+
+        temporary_ai_failure = any(
+            term in error_text
+            for term in [
+                "503",
+                "unavailable",
+                "high demand",
+                "429",
+                "resource_exhausted"
+            ]
+        )
+
+        if temporary_ai_failure:
+            backup_recipe = {
+                "dish_name": selected_meal.get(
+                    "dish_name",
+                    "Your Ruchi Meal"
+                ),
+                "description": selected_meal.get(
+                    "description",
+                    "A simple meal built around what you already have."
+                ),
+                "ingredients": [
+                    {
+                        "ingredient": ingredient.strip(),
+                        "quantity": "As needed"
+                    }
+                    for ingredient in ingredients.split(",")
+                    if ingredient.strip()
+                ],
+                "missing_ingredients": [],
+                "substitutions": [
+                    "Adjust seasonings and ingredients based on what you have available."
+                ],
+                "steps": [
+                    "Prepare and clean all your ingredients.",
+                    "Chop or portion the ingredients as needed.",
+                    "Heat a pan or suitable cooking vessel.",
+                    "Cook the main ingredients until properly cooked.",
+                    "Add vegetables, seasonings and other ingredients.",
+                    "Taste and adjust seasoning.",
+                    "Serve warm and enjoy."
+                ],
+                "nutrition": {
+                    "calories": "Varies by ingredients and portion size",
+                    "protein": "Varies",
+                    "carbs": "Varies",
+                    "fat": "Varies"
+                }
+            }
+
+            return backup_recipe, None
+
         return None, str(e)
 
 
