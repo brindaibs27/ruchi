@@ -318,7 +318,7 @@ def generate_recipe(
     servings,
     diet,
     allergies,
-    spice
+    taste
 ):
 
     client = get_client()
@@ -535,7 +535,7 @@ with tab1:
                     servings,
                     diet,
                     allergies,
-                    spice
+                    taste
                 )
 
             if error:
@@ -606,7 +606,7 @@ with tab1:
                             data["servings"],
                             data["diet"],
                             data["allergies"],
-                            data["spice"]
+                            data["taste"]
                         )
 
                     if error:
