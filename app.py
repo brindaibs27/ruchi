@@ -306,6 +306,43 @@ Return ONLY valid JSON:
         return data["options"], None
 
     except Exception as e:
+
+        # Demo-safe graceful fallback for temporary AI outages
+        error_text = str(e).lower()
+
+        temporary_ai_failure = any(
+            term in error_text
+            for term in [
+                "503",
+                "unavailable",
+                "high demand",
+                "429",
+                "resource_exhausted"
+            ]
+        )
+
+        if temporary_ai_failure:
+
+            backup_options = [
+                {
+                    "dish_name": "Kitchen Comfort Bowl",
+                    "description": "A warm, flexible bowl built around the ingredients already in your kitchen.",
+                    "why_it_fits": "Uses available ingredients first and works well as a quick everyday meal."
+                },
+                {
+                    "dish_name": "Quick Pantry Skillet",
+                    "description": "A simple one-pan meal using your available vegetables, grains or protein.",
+                    "why_it_fits": "Keeps extra ingredients to a minimum and is easy to adapt to your taste."
+                },
+                {
+                    "dish_name": "Fresh Kitchen Mix",
+                    "description": "A lighter meal combining your available ingredients into a simple, balanced dish.",
+                    "why_it_fits": "Offers a different style of meal while still prioritising what you already have."
+                }
+            ]
+
+            return backup_options, None
+
         return None, str(e)
 
 
