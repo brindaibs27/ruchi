@@ -142,7 +142,7 @@ def get_client():
 def generate_with_fallback(client, prompt):
     models = [
         "gemini-3.8-flash",
-        "gemini-2.5-flash-lite"
+        "gemini-3.5-flash-lite"
     ]
 
     last_error = None
