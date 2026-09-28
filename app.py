@@ -1,6 +1,7 @@
 
 import streamlit as st
 import json
+import time
 from google import genai
 
 # ============================================================
@@ -137,6 +138,49 @@ def get_client():
     except Exception:
         return None
 
+def generate_with_fallback(client, prompt):
+    models = [
+        "gemini-3.8-flash",
+        "gemini-2.5-flash-lite"
+    ]
+
+    last_error = None
+
+    for model in models:
+        for attempt in range(2):
+            try:
+                return client.models.generate_content(
+                    model=model,
+                    contents=prompt
+                )
+
+            except Exception as e:
+                last_error = e
+                error_text = str(e).lower()
+
+                # Retry only temporary service/rate-limit problems
+                is_temporary = any(
+                    term in error_text
+                    for term in [
+                        "503",
+                        "unavailable",
+                        "high demand",
+                        "429",
+                        "resource_exhausted"
+                    ]
+                )
+
+                if not is_temporary:
+                    raise
+
+                if attempt == 0:
+                    time.sleep(2)
+
+        # If this model remains unavailable,
+        # automatically try the next model.
+
+    raise last_error       
+
 
 # ============================================================
 # GENERATE THREE MEAL OPTIONS
@@ -148,15 +192,31 @@ def generate_meal_options(
     servings,
     diet,
     allergies,
-    spice
+    taste
 ):
 
     client = get_client()
 
     if client is None:
         return None, "Gemini API key is unavailable."
+    
+        history = st.session_state.get("cooking_history", [])
 
-    prompt = f"""
+        if history:
+            recent_history = history[-5:]
+
+            preference_context = "\n".join(
+                [
+                    f"- {meal.get('dish_name', 'Meal')}: "
+                    f"rating {meal.get('rating', 'N/A')}/5, "
+                    f"make again: {meal.get('make_again', 'N/A')}"
+                    for meal in recent_history
+                ]
+            )
+        else:
+            preference_context = "No previous cooking feedback yet."
+
+        prompt = f"""
 You are Ruchi, an intelligent everyday kitchen assistant.
 
 Ruchi's purpose is to help people make more of the food and
@@ -179,8 +239,16 @@ Dietary preference:
 Allergies / avoid:
 {allergies}
 
-Spice preference:
-{spice}
+Taste preference:
+{taste}
+
+Previous cooking feedback:
+{preference_context}
+
+Use the previous cooking feedback lightly when choosing meal options.
+Prefer patterns from meals the user rated highly or said they would make again.
+However, always prioritise the user's current ingredients, craving, diet, avoidances and taste preference.
+Do not simply repeat previous meals unless they genuinely fit the current request.
 
 Suggest exactly THREE practical meals.
 
@@ -218,10 +286,10 @@ Return ONLY valid JSON:
 
     try:
 
-        response = client.models.generate_content(
-            model="gemini-3.8-flash",
-            contents=prompt
-        )
+        response = generate_with_fallback(
+    client,
+    prompt
+)
 
         raw = response.text.strip()
 
@@ -278,8 +346,8 @@ Diet:
 Allergies / avoid:
 {allergies}
 
-Spice preference:
-{spice}
+Taste preference:
+{taste}
 
 Ruchi should help the user make useful use of ingredients
 already available.
@@ -328,10 +396,10 @@ Do not include text outside the JSON.
 
     try:
 
-        response = client.models.generate_content(
-            model="gemini-3.8-flash",
-            contents=prompt
-        )
+        response = generate_with_fallback(
+    client,
+    prompt
+)
 
         raw = response.text.strip()
 
@@ -389,7 +457,7 @@ with tab1:
 
     craving = st.text_input(
         "What are you in the mood for?",
-        placeholder="Something spicy, comforting, light, high-protein..."
+        placeholder="A quick dinner, something comforting, a light snack, high-protein..."
     )
 
     ingredients = st.text_area(
@@ -420,13 +488,17 @@ with tab1:
         )
 
     with c2:
-        spice = st.selectbox(
-            "Spice preference",
+        taste = st.selectbox(
+            "Taste preference",
             [
-                "Mild",
-                "Medium",
+                "No preference",
+                "Mild & comforting",
                 "Spicy",
-                "Very spicy"
+                "Tangy",
+                "Sweet",
+                "Savory",
+                "Fresh & light",
+                "Rich & indulgent"
             ]
         )
 
@@ -453,7 +525,7 @@ with tab1:
                 "servings": servings,
                 "diet": diet,
                 "allergies": allergies,
-                "spice": spice
+                "taste": taste
             }
 
             with st.spinner("Looking through your kitchen..."):
@@ -1091,6 +1163,18 @@ with tab3:
                 " • ".join(unique)
             )
 
+            ingredient_counts = pd.Series(
+                pantry_uses
+            ).value_counts().head(5)
+
+            st.markdown(
+                "#### Most-used pantry ingredients"
+            )
+
+            st.bar_chart(
+                ingredient_counts
+            )
+
         else:
 
             st.write(
@@ -1298,13 +1382,13 @@ with tab5:
         st.markdown("""
 **Free**
 
-✓ Meal discovery  
-✓ Ingredient-based suggestions  
-✓ Personalised meals  
-✓ Ingredient intelligence  
-✓ Cooking Mode  
-✓ Kitchen Insights  
-✓ Saved meals  
+✓ Meal discovery
+✓ Ingredient-based suggestions
+✓ Personalised meals
+✓ Ingredient intelligence
+✓ Cooking Mode
+✓ Kitchen Insights
+✓ Saved meals
 ✓ Food inspiration
 """)
 
@@ -1323,11 +1407,11 @@ with tab5:
 
 Everything in Ruchi, plus:
 
-✓ Deeper nutrition insights  
-✓ Advanced pantry intelligence  
-✓ Longer cooking history  
-✓ Advanced meal planning  
-✓ Deeper personalisation  
+✓ Deeper nutrition insights
+✓ Advanced pantry intelligence
+✓ Longer cooking history
+✓ Advanced meal planning
+✓ Deeper personalisation
 ✓ Future premium features
 """)
 
@@ -1342,6 +1426,27 @@ Everything in Ruchi, plus:
         "Payments are not part of the current MVP."
     )
 
+# ============================================================
+# ABOUT RUCHI
+# ============================================================
+
+st.markdown("---")
+
+with st.expander("🌿 About Ruchi"):
+    st.markdown("""
+**Good meals often begin with what you already have.**
+
+Ruchi was created around a simple question: *What can I make with this?*
+
+Instead of starting with a recipe and asking you to buy everything for it, Ruchi starts with **you** — the ingredients in your kitchen, what you're craving, your preferences and what you feel like cooking.
+
+With AI-powered meal suggestions, ingredient intelligence, substitutions and guided cooking, Ruchi helps turn what's already available into something worth making.
+
+**Less searching. Less guessing. More making.**
+
+**Ruchi — Make More of What You Have.**
+""")
+    
 
 # ============================================================
 # FOOTER
