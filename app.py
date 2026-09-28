@@ -2,6 +2,7 @@
 import streamlit as st
 import json
 import time
+import pandas as pd
 from google import genai
 
 # ============================================================
@@ -199,24 +200,24 @@ def generate_meal_options(
 
     if client is None:
         return None, "Gemini API key is unavailable."
-    
-        history = st.session_state.get("cooking_history", [])
 
-        if history:
-            recent_history = history[-5:]
+    history = st.session_state.get("cooking_history", [])
 
-            preference_context = "\n".join(
-                [
-                    f"- {meal.get('dish_name', 'Meal')}: "
-                    f"rating {meal.get('rating', 'N/A')}/5, "
-                    f"make again: {meal.get('make_again', 'N/A')}"
-                    for meal in recent_history
-                ]
-            )
-        else:
-            preference_context = "No previous cooking feedback yet."
+    if history:
+        recent_history = history[-5:]
 
-        prompt = f"""
+        preference_context = "\n".join(
+            [
+                f"- {meal.get('dish_name', 'Meal')}: "
+                f"rating {meal.get('rating', 'N/A')}/5, "
+                f"make again: {meal.get('make_again', 'N/A')}"
+                for meal in recent_history
+            ]
+        )
+    else:
+        preference_context = "No previous cooking feedback yet."
+
+    prompt = f"""
 You are Ruchi, an intelligent everyday kitchen assistant.
 
 Ruchi's purpose is to help people make more of the food and
